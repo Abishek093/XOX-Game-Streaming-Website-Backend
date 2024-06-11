@@ -18,10 +18,10 @@ app.use(cors({
 app.use(express.json());
 
 app.use(session({
-    secret: process.env.SECRET || 'MY_SECRET', // Change this to your secret key
+    secret: process.env.SECRET || 'MY_SECRET', 
     resave: false,
     saveUninitialized: true,
-    cookie: { secure: false } // Set to true if using HTTPS
+    cookie: { secure: false } 
 }));
 
 app.use('/api', userRouter);
