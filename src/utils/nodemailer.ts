@@ -24,6 +24,8 @@ transporter.verify((error, success) => {
 });
 
 const sendOtp = async (email: string, otp: number): Promise<void> => {
+  console.log("Otp is:- ",otp);
+  
   const mailOptions = {
     from: process.env.NODEMAILER_USER,
     to: email,
