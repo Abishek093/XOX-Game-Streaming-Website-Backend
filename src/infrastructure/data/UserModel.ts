@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-export interface IUser extends Document {  // Exporting IUser
+export interface IUser extends Document {  
     email: string;
     username: string;
     displayName: string;
@@ -9,8 +9,8 @@ export interface IUser extends Document {  // Exporting IUser
     profileImage?: string;
     titleImage?: string;
     bio?: string;
-    followers: mongoose.Types.ObjectId[];
-    following: mongoose.Types.ObjectId[];
+    // followers: mongoose.Types.ObjectId[];
+    // following: mongoose.Types.ObjectId[];
     walletBalance: number;
     transactions: mongoose.Types.ObjectId[];
     createdAt: Date;
@@ -29,8 +29,8 @@ const UserSchema: Schema = new Schema({
     profileImage: { type: String },
     titleImage: { type: String },
     bio: { type: String },
-    followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-    following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    // followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    // following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     walletBalance: { type: Number, default: 0 },
     transactions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Transaction' }],
     createdAt: { type: Date, default: Date.now },

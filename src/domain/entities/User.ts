@@ -2,13 +2,13 @@ export interface UserProps {
     id?: string;
     email: string;
     username: string;
-    displayName?: string; 
+    displayName?: string;
     password: string;
     profileImage?: string;
     titleImage?: string;
     bio?: string;
-    followers?: string[];
-    following?: string[];
+    // followers?: string[];
+    // following?: string[];
     walletBalance?: number;
     transactions?: string[];
     createdAt?: Date;
@@ -16,7 +16,7 @@ export interface UserProps {
     isVerified?: boolean;
     isGoogleUser?: boolean;
     dateOfBirth?: Date;
-    isBlocked?: boolean
+    isBlocked?: boolean;
 }
 
 export class User {
@@ -28,8 +28,8 @@ export class User {
     public profileImage?: string;
     public titleImage?: string;
     public bio?: string;
-    public followers: string[];
-    public following: string[];
+    // public followers: string[];
+    // public following: string[];
     public walletBalance: number;
     public transactions: string[];
     public createdAt: Date;
@@ -45,11 +45,11 @@ export class User {
         this.username = props.username;
         this.displayName = props.displayName;
         this.password = props.password;
-        this.profileImage = props.profileImage;
+        this.profileImage = props.profileImage ?? '';
         this.titleImage = props.titleImage;
         this.bio = props.bio;
-        this.followers = props.followers ?? [];
-        this.following = props.following ?? [];
+        // this.followers = props.followers ?? [];
+        // this.following = props.following ?? [];
         this.walletBalance = props.walletBalance ?? 0;
         this.transactions = props.transactions ?? [];
         this.createdAt = props.createdAt ?? new Date();
@@ -62,11 +62,28 @@ export class User {
 }
 
 export type AuthenticatedUser = {
-    token: string;
+    accessToken: string;
+    refreshToken: string;
     user: {
         id: string;
         username: string;
         displayName?: string;
         email: string;
+        profileImage?: string;
+        titleImage?: string;
+        bio?: string;
+        // followers: string[];
+        // following: string[];
     };
 };
+
+export type NonSensitiveUserProps = {
+    id: string;
+    email: string;
+    username: string;
+    displayName?: string;
+    profileImage?: string;
+    titleImage?: string;
+    bio?: string;
+    dateOfBirth?: Date;
+}
