@@ -1,0 +1,67 @@
+Folder PATH listing for volume New Volume
+Volume serial number is 8CEA-8D2E
+G:.
+|   folder_structure.txt
+|   server.ts
+|   
++---application
+|   \---use-cases
+|       +---Admin
+|       |       CreateAdminUseCase.ts
+|       |       
+|       \---UserUseCases
+|               AuthUseCase.ts
+|               FriendsUseCase.ts
+|               UpdateUserUseCases.ts
+|               
++---domain
+|   +---entities
+|   |   |   Otp.ts
+|   |   |   User.ts
+|   |   |   
+|   |   \---Admin
+|   |           Admin.ts
+|   |           
+|   \---repositories
+|           AdminRepository.ts
+|           UserRepository.ts
+|           
++---infrastructure
+|   +---config
+|   |       db.ts
+|   |       
+|   +---data
+|   |       AdminModel.ts
+|   |       FollowerModel.ts
+|   |       otpModel.ts
+|   |       UserModel.ts
+|   |       
+|   +---middlewares
+|   |       authMiddleware.ts
+|   |       
+|   \---repositories
+|       |   MongoUserRepository.ts
+|       |   
+|       \---Admin
+|               MongoAdminRepository.ts
+|               
++---interfaces
+|   +---controllers
+|   |   +---admin
+|   |   |       adminAuthController.ts
+|   |   |       
+|   |   \---userController
+|   |           FriendsControllet.ts
+|   |           UserAuthController.ts
+|   |           UserProfileController.ts
+|   |           
+|   \---routes
+|           adminRoute.ts
+|           userRoutes.ts
+|           
+\---utils
+        jwt.ts
+        nodemailer.ts
+        otp.ts
+        responseHandler.ts
+        

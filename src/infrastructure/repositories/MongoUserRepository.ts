@@ -1,9 +1,9 @@
 import { UserRepository } from '../../domain/repositories/UserRepository';
 import { User, UserProps } from '../../domain/entities/User';
 import UserModel, { IUser } from '../data/UserModel';
-import { log } from 'console';
+import { toUserProps } from '../../utils/mapper'
 import bcrypt from 'bcrypt';
-
+import { log } from 'console';
 
 export class MongoUserRepository implements UserRepository {
   async createUser(user: User): Promise<User> {
@@ -16,8 +16,6 @@ export class MongoUserRepository implements UserRepository {
       profileImage: user.profileImage,
       titleImage: user.titleImage,
       bio: user.bio,
-      // followers: user.followers,
-      // following: user.following,
       walletBalance: user.walletBalance,
       transactions: user.transactions,
       createdAt: user.createdAt,
@@ -36,32 +34,18 @@ export class MongoUserRepository implements UserRepository {
     });
   }
 
+  async findUserByUsername(username: string):Promise<User | null>{
+    log("Username condition checking!")
+    const user = await UserModel.findOne({username})
+    if(!user) return null
+    return new User(toUserProps(user));
+  }
+
   async findUserByEmail(email: string): Promise<User | null> {
     const user = await UserModel.findOne({ email }).exec();
     if (!user) return null;
 
-    const userProps: UserProps = {
-      id: (user._id as unknown as string),
-      email: user.email,
-      username: user.username,
-      displayName: user.displayName,
-      password: user.password,
-      profileImage: user.profileImage,
-      titleImage: user.titleImage,
-      bio: user.bio,
-      // followers: user.followers.map(follower => follower.toHexString()),
-      // following: user.following.map(following => following.toHexString()),
-      walletBalance: user.walletBalance,
-      transactions: user.transactions.map(transaction => transaction.toHexString()),
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-      isVerified: user.isVerified,
-      isGoogleUser: user.isGoogleUser,
-      dateOfBirth: user.dateOfBirth,
-      isBlocked: user.isBlocked
-    };
-
-    return new User(userProps);
+    return new User(toUserProps(user));
   }
 
   async verifyUser(userId: string): Promise<User> {
@@ -74,62 +58,17 @@ export class MongoUserRepository implements UserRepository {
     existingUser.isVerified = true;
     await existingUser.save();
 
-    const userProps: UserProps = {
-      id: (existingUser._id as unknown as string),
-      email: existingUser.email,
-      username: existingUser.username,
-      displayName: existingUser.displayName,
-      password: existingUser.password,
-      profileImage: existingUser.profileImage,
-      titleImage: existingUser.titleImage,
-      bio: existingUser.bio,
-      // followers: existingUser.followers.map(follower => follower.toHexString()),
-      // following: existingUser.following.map(following => following.toHexString()),
-      walletBalance: existingUser.walletBalance,
-      transactions: existingUser.transactions.map(transaction => transaction.toHexString()),
-      createdAt: existingUser.createdAt,
-      updatedAt: existingUser.updatedAt,
-      isVerified: existingUser.isVerified,
-      isGoogleUser: existingUser.isGoogleUser,
-      dateOfBirth: existingUser.dateOfBirth,
-      isBlocked: existingUser.isBlocked
-    };
-
-    return new User(userProps);
+    return new User(toUserProps(existingUser));
   }
 
   async updateUser(userId: string, updateData: Partial<UserProps>): Promise<User> {
-    log(userId, updateData)
-    const existingUser = await UserModel.findById(userId);
-    log("user",existingUser);
     const updatedUser = await UserModel.findByIdAndUpdate(userId, updateData, { new: true });
 
     if (!updatedUser) {
       throw new Error('User not found');
     }
 
-    const userProps: UserProps = {
-      id: (updatedUser._id as unknown as string),
-      email: updatedUser.email,
-      username: updatedUser.username,
-      displayName: updatedUser.displayName,
-      password: updatedUser.password,
-      profileImage: updatedUser.profileImage,
-      titleImage: updatedUser.titleImage,
-      bio: updatedUser.bio,
-      // followers: updatedUser.followers.map(follower => follower.toHexString()),
-      // following: updatedUser.following.map(following => following.toHexString()),
-      walletBalance: updatedUser.walletBalance,
-      transactions: updatedUser.transactions.map(transaction => transaction.toHexString()),
-      createdAt: updatedUser.createdAt,
-      updatedAt: updatedUser.updatedAt,
-      isVerified: updatedUser.isVerified,
-      isGoogleUser: updatedUser.isGoogleUser,
-      dateOfBirth: updatedUser.dateOfBirth,
-      isBlocked: updatedUser.isBlocked
-    };
-
-    return new User(userProps);
+    return new User(toUserProps(updatedUser));
   }
 
   async updateUserPassword(userId: string, newPassword: string): Promise<void> {
@@ -143,24 +82,4 @@ export class MongoUserRepository implements UserRepository {
       throw new Error('Failed to update password');
     }
   }
-
-  // async findUserByUsername(username: string): Promise<User[]> {
-  //   try {
-  //     const regexPattern = username.replace(/[\W_]+/g, '.*');
-  //     const regex = new RegExp(`^${regexPattern}`, 'i');
-  
-  //     const matchedUsers = await UserModel.find({
-  //       $or: [
-  //         { username: { $regex: regex } },
-  //         { displayName: { $regex: regex } }
-  //       ]
-  //     }).exec();
-  
-  //     console.log(matchedUsers, "search users");
-  //     return matchedUsers as User[]; // Ensure the cast to User[] if needed
-  
-  //   } catch (error) {
-  //     throw new Error('User not found');
-  //   }
-  // }
 }

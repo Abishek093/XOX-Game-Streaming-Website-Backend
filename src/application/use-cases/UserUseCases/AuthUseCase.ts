@@ -3,16 +3,23 @@ import { User, UserProps, AuthenticatedUser } from '../../../domain/entities/Use
 import { generateToken, verifyRefreshToken } from '../../../utils/jwt';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
+import { error, log } from 'console';
 
 export class CreateUserUseCase {
   constructor(private userRepository: UserRepository) { }
 
   async execute(email: string, username: string, displayName: string, dateOfBirth: Date, password: string): Promise<User> {
+    log("entering to creating user...")
     const existingUser = await this.userRepository.findUserByEmail(email);
+    const existingUsername =  await this.userRepository.findUserByUsername(username);
     if (existingUser) {
+
       throw new Error('User with this email already exists');
     }
-
+    if(existingUsername){
+      log("username alerady exist")
+      throw new Error('Username already exists')
+    }
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const userProps: UserProps = {
@@ -55,11 +62,17 @@ export class VerifyUserUseCase {
 
   async execute(email: string, password: string): Promise<AuthenticatedUser> {
     const existingUser = await this.userRepository.findUserByEmail(email);
-    if (!existingUser || !bcrypt.compareSync(password, existingUser.password)) {
+    if (!existingUser) {
+      throw new Error('User not found. Signup to continue.');
+    }
+    if (existingUser.isGoogleUser) {
+      throw new Error('Continue signup using Google.');
+    }
+    if (!bcrypt.compareSync(password, existingUser.password)) {
       throw new Error('Invalid credentials');
     }
     if (existingUser.isBlocked === true) {
-      throw new Error('Account temporarily blocked ');
+      throw new Error('Account temporarily blocked');
     }
     const { accessToken, refreshToken } = generateToken(existingUser.id);
     const user = {
@@ -68,11 +81,8 @@ export class VerifyUserUseCase {
       displayName: existingUser.displayName ?? '',
       email: existingUser.email,
       profileImage: existingUser.profileImage,
-      titleImage:existingUser.titleImage,
-      bio:existingUser.bio,
-      // followers:existingUser.followers,
-      // following:existingUser.following,
-
+      titleImage: existingUser.titleImage,
+      bio: existingUser.bio,
     };
     return { user, accessToken, refreshToken };
   }
@@ -81,12 +91,34 @@ export class VerifyUserUseCase {
 export class CreateGoogleUserUseCase {
   constructor(private userRepository: UserRepository) { }
 
-  async execute(userName: string, email: string, profileImage: string): Promise<AuthenticatedUser> {
+  async execute(email: string, profileImage: string, userName: string): Promise<AuthenticatedUser> {
     const existingUser = await this.userRepository.findUserByEmail(email);
     if (existingUser) {
-      throw new Error('User with this email already exists');
+      if (existingUser.isBlocked) {
+        throw new Error('Account is temporarily blocked!');
+      }
+      if (!existingUser.isGoogleUser) {
+        throw new Error('Please login using your email and password.');
+      }
+      if (existingUser.isGoogleUser) {
+        const { accessToken, refreshToken } = generateToken(existingUser.id);
+        return {
+          accessToken,
+          refreshToken,
+          user: {
+            id: existingUser.id,
+            username: existingUser.username,
+            displayName: existingUser.displayName ?? '',
+            email: existingUser.email,
+            profileImage: existingUser.profileImage,
+            titleImage: existingUser.titleImage,
+            bio: existingUser.bio,
+          }
+        };
+      }
     }
-
+    const existingUsername = await this.userRepository.findUserByUsername(userName)
+    if(existingUsername) throw new Error("Username already exist") 
     const randomPassword = crypto.randomBytes(16).toString('hex');
     const hashedPassword = await bcrypt.hash(randomPassword, 10);
 
@@ -98,7 +130,6 @@ export class CreateGoogleUserUseCase {
       isGoogleUser: true,
       isVerified: true
     };
-
     const user = new User(userProps);
     const createdUser = await this.userRepository.createUser(user);
 
@@ -113,28 +144,12 @@ export class CreateGoogleUserUseCase {
           displayName: createdUser.displayName ?? '',
           email: createdUser.email,
           profileImage: createdUser.profileImage,
-          titleImage:createdUser.titleImage,
-          bio:createdUser.bio,
-          // followers:createdUser.followers,
-          // following:createdUser.following,
+          titleImage: createdUser.titleImage,
+          bio: createdUser.bio,
         }
       };
     } else {
-      throw new Error('User creation failed');
-    }
-  }
-
-  async googleLogin(email: string, profileImage: string, username: string): Promise<{accessToken: string; refreshToken: string; user: AuthenticatedUser['user'] }> {
-    const existingUser = await this.userRepository.findUserByEmail(email);
-    if (existingUser && existingUser.isGoogleUser && existingUser.isVerified && !existingUser.isBlocked) {
-      const { accessToken, refreshToken } = generateToken(existingUser.id);
-      return { accessToken, refreshToken, user: existingUser };
-    } else if (existingUser && !existingUser.isGoogleUser) {
-      throw new Error('Please login using your email and password.');
-    } else {
-      const newUser = await this.execute(username, email, profileImage);
-      return { accessToken: newUser.accessToken, refreshToken: newUser.refreshToken, user: newUser.user };
-
+      throw new Error('Something happened with signup. Please try again later.');
     }
   }
 }
