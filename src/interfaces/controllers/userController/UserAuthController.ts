@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { CreateUserUseCase, VerifyUserUseCase, CreateGoogleUserUseCase, RefreshAccessTokenUseCase, UpdatePasswordUseCase } from '../../../application/use-cases/UserUseCases/AuthUseCase';
+import { CreateUserUseCase, VerifyUserUseCase, CreateGoogleUserUseCase, RefreshAccessTokenUseCase, UpdatePasswordUseCase, CheckUsernameUseCase } from '../../../application/use-cases/UserUseCases/AuthUseCase';
 import { MongoUserRepository } from '../../../infrastructure/repositories/MongoUserRepository';
 import { handleResponse } from '../../../utils/responseHandler';
 import { sendOtp } from '../../../utils/nodemailer';
@@ -7,13 +7,14 @@ import { generateOTP } from '../../../utils/otp';
 import OtpModel from '../../../infrastructure/data/otpModel';
 import mongoose from 'mongoose';
 import { log } from 'console';
+import { AuthenticatedUser } from '../../../domain/entities/User';
 
 const userRepository = new MongoUserRepository();
 const createUserUseCase = new CreateUserUseCase(userRepository);
 const verifyUserUseCase = new VerifyUserUseCase(userRepository);
 const createGoogleUserUseCase = new CreateGoogleUserUseCase(userRepository);
 const updatePasswordUseCase = new UpdatePasswordUseCase(userRepository)
-
+const checkUsernameUseCase = new CheckUsernameUseCase(userRepository)
 const refreshAccessTokenUseCase = new RefreshAccessTokenUseCase();
 
 
@@ -82,13 +83,23 @@ export const verifyLogin = async (req: Request, res: Response): Promise<void> =>
 export const googleAuth = async (req: Request, res: Response): Promise<void> => {
     try {
         const { userName, email, profileImage } = req.body;
-        const { accessToken, refreshToken, user } = await createGoogleUserUseCase.execute(email, profileImage, userName);
-        handleResponse(res, 200, { accessToken, refreshToken, user })
+        const response = await createGoogleUserUseCase.execute(email, profileImage, userName);
+
+        if ('isUsernameTaken' in response) {
+            handleResponse(res, 200, response); 
+        } else {
+            const { accessToken, refreshToken, user } = response as AuthenticatedUser;
+            handleResponse(res, 200, { accessToken, refreshToken, user });
+        }
     } catch (error: any) {
         console.error('Error during Google login: ', error.message);
-        handleResponse(res, 400, { message: error.message });
+        if (error.message === 'Username already exists') {
+            handleResponse(res, 200, { isUsernameTaken: true });
+        } else {
+            handleResponse(res, 400, { message: error.message });
+        }
     }
-}
+};
 
 export const confirmMail = async (req: Request, res: Response): Promise<void> => {
     const { email } = req.body;
@@ -126,8 +137,6 @@ export const confirmMail = async (req: Request, res: Response): Promise<void> =>
     }
 };
 
-
-
 export const verifyResetOtpApi = async (req: Request, res: Response): Promise<void> => {
     const { otp, email } = req.body;
     try {
@@ -157,7 +166,6 @@ export const verifyResetOtpApi = async (req: Request, res: Response): Promise<vo
         }
     }
 };
-
 
 export const updatePassword = async (req: Request, res: Response): Promise<void> => {
     const { email, newPassword } = req.body;
@@ -205,3 +213,20 @@ export const resendOTP = async (req: Request, res: Response): Promise<void> => {
         res.status(500).json(error)
     }
 }
+
+export const checkUsername = async (req: Request, res: Response): Promise<void> => {
+    const username = req.query.username;
+    if (typeof username !== 'string') {
+        log("Call one")
+        res.status(400).json({ error: 'Invalid username' });
+        return;
+    }
+    try {
+        const isAvailable = await checkUsernameUseCase.execute(username);
+        log("Username", isAvailable)
+        res.status(200).json({ available: !isAvailable });
+    } catch (error) {
+        console.error("Error checking username availability: ", error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};

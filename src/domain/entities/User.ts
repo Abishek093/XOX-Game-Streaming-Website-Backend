@@ -77,6 +77,12 @@ export type AuthenticatedUser = {
     };
 };
 
+export type UsernameTakenResponse = {
+    isUsernameTaken: boolean;
+};
+
+export type AuthResponse = AuthenticatedUser | UsernameTakenResponse;
+
 export type NonSensitiveUserProps = {
     id: string;
     email: string;

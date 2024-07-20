@@ -1,5 +1,5 @@
 import { UserRepository } from '../../../domain/repositories/UserRepository';
-import { User, UserProps, AuthenticatedUser } from '../../../domain/entities/User';
+import { User, UserProps, AuthenticatedUser, AuthResponse } from '../../../domain/entities/User';
 import { generateToken, verifyRefreshToken } from '../../../utils/jwt';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
@@ -91,7 +91,7 @@ export class VerifyUserUseCase {
 export class CreateGoogleUserUseCase {
   constructor(private userRepository: UserRepository) { }
 
-  async execute(email: string, profileImage: string, userName: string): Promise<AuthenticatedUser> {
+  async execute(email: string, profileImage: string, userName: string): Promise<AuthResponse> {
     const existingUser = await this.userRepository.findUserByEmail(email);
     if (existingUser) {
       if (existingUser.isBlocked) {
@@ -117,8 +117,11 @@ export class CreateGoogleUserUseCase {
         };
       }
     }
-    const existingUsername = await this.userRepository.findUserByUsername(userName)
-    if(existingUsername) throw new Error("Username already exist") 
+    const existingUsername = await this.userRepository.findUserByUsername(userName);
+    if (existingUsername) {
+      return { isUsernameTaken: true };
+    }
+    
     const randomPassword = crypto.randomBytes(16).toString('hex');
     const hashedPassword = await bcrypt.hash(randomPassword, 10);
 
@@ -164,4 +167,11 @@ export class RefreshAccessTokenUseCase {
 }
 
 
+export class CheckUsernameUseCase {
+  constructor(private userRepository: UserRepository) {}
 
+  async execute(username: string): Promise<boolean> {
+    const existingUsername = await this.userRepository.findUserByUsername(username);
+    return !!existingUsername;
+  }
+}

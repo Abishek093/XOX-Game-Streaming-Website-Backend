@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createUser, verifyOtp, verifyLogin, googleAuth, refreshAccessToken, confirmMail,verifyResetOtpApi, updatePassword,resendOTP } from '../controllers/userController/UserAuthController';
+import { createUser, verifyOtp, verifyLogin, checkUsername, googleAuth, refreshAccessToken, confirmMail,verifyResetOtpApi, updatePassword,resendOTP } from '../controllers/userController/UserAuthController';
 import { updateUser } from '../controllers/userController/UserProfileController';
 import { protectUser } from '../../infrastructure/middlewares/authMiddleware';
 import { fetchSearchResults, followUser } from '../controllers/userController/FriendsControllet';
@@ -19,5 +19,5 @@ userRouter.post('/update-password', updatePassword);
 userRouter.post('/resend-otp',resendOTP)
 userRouter.get('/searchUsers',protectUser, fetchSearchResults)
 userRouter.post('/follower/:followerId/user/:userId', protectUser, followUser);
-
+userRouter.get('/check-username',checkUsername)
 export default userRouter;
