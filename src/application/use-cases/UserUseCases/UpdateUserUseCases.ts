@@ -2,6 +2,7 @@
 import { UserRepository } from '../../../domain/repositories/UserRepository';
 import { AuthenticatedUser, NonSensitiveUserProps, User, UserProps } from '../../../domain/entities/User';
 import { error, log } from 'console';
+import { uploadToS3 } from '../../../utils/s3Uploader';
 
 
 export class UpdateUserUseCase {
@@ -32,3 +33,24 @@ export class UpdateUserUseCase {
     }
   }
 }
+
+export class ProfileImageUseCase {
+  constructor(private userRepository: UserRepository) {}
+
+  async execute(userId: string, username: string, profileImage: Buffer): Promise<string> {
+    const profileImageUrl = await uploadToS3(profileImage, `${userId}-profile.jpg`);
+    await this.userRepository.updateUserProfileImage(userId, profileImageUrl);
+    return profileImageUrl;
+  }
+}
+
+export class TitleImageUseCase {
+  constructor(private userRepository: UserRepository) {}
+
+  async execute(userId: string, username: string, titleImage: Buffer): Promise<string> {
+    const titleImageUrl = await uploadToS3(titleImage, `${userId}-title.jpg`);
+    await this.userRepository.updateUserTitleImage(userId, titleImageUrl);
+    return titleImageUrl;
+  }
+}
+

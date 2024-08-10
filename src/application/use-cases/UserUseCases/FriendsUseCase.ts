@@ -1,8 +1,9 @@
 import { UserRepository } from '../../../domain/repositories/UserRepository';
-import { User, UserProps, AuthenticatedUser } from '../../../domain/entities/User';
+import { User, UserProps, AuthenticatedUser, UserDetails } from '../../../domain/entities/User';
 import UserModel from '../../../infrastructure/data/UserModel';
-import { profile } from 'console';
+import { log, profile } from 'console';
 import { Follower } from '../../../infrastructure/data/FollowerModel';
+import { CheckUsernameUseCase } from './AuthUseCase';
 
 
 export class FindFriendsUseCase {
@@ -37,5 +38,24 @@ export class FollowUserUseCase {
       followerId
     });
     await follow.save();
+  }
+}
+
+export class GetUserProfile {
+  constructor(private userRepository: UserRepository) {}
+
+  async execute(username: string): Promise<UserDetails | null> {
+    const user = await this.userRepository.findUserByUsername(username);
+    if (user) {
+      return {
+        id: user.id,
+        username: user.username,
+        displayName: user.displayName,
+        profileImage: user.profileImage,
+        titleImage: user.titleImage,
+        bio: user.bio,
+      };
+    }
+    return null;
   }
 }

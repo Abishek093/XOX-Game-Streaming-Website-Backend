@@ -1,47 +1,80 @@
-import { S3Client } from '@aws-sdk/client-s3';
-import { Upload } from '@aws-sdk/lib-storage';
-import dotenv from 'dotenv';
+// import { S3Client, PutObjectCommand, PutObjectCommandInput } from "@aws-sdk/client-s3";
 
-dotenv.config();
+// export const uploadToS3 = async (buffer: Buffer, key: string): Promise<string> => {
+// console.log('AWS Region:', process.env.AWS_REGION);
+// console.log('AWS Bucket Name:', process.env.AWS_BUCKET_NAME);
 
-const {
-  AWS_ACCESS_KEY_ID,
-  AWS_SECRET_ACCESS_KEY,
-  AWS_REGION,
-  AWS_BUCKET_NAME,
-} = process.env;
+//   const client = new S3Client({ region: process.env.AWS_REGION });
+  
+//   const params: PutObjectCommandInput = {
+//     Bucket: process.env.AWS_BUCKET_NAME,
+//     Key: key,
+//     Body: buffer,
+//     ContentType: "image/jpeg",
+//     // ACL: "public-read" // Ensure ACL is set if needed
+//   };
 
-if (!AWS_ACCESS_KEY_ID || !AWS_SECRET_ACCESS_KEY || !AWS_REGION || !AWS_BUCKET_NAME) {
-  throw new Error('Missing AWS configuration in .env file');
-}
+//   try {
+//     const command = new PutObjectCommand(params);
+//     const data = await client.send(command);
+//     console.log("Successfully uploaded to S3", data);
 
-const s3Client = new S3Client({
-  region: AWS_REGION,
-  credentials: {
-    accessKeyId: AWS_ACCESS_KEY_ID,
-    secretAccessKey: AWS_SECRET_ACCESS_KEY,
-  },
-});
+//     const url = `https://${params.Bucket}.s3.${client.config.region}.amazonaws.com/${params.Key}`;
+//     console.log("Profile Image URL:", url);
 
-export const uploadToS3 = async (file: Express.Multer.File): Promise<{ Location: string }> => {
-  const uploadParams = {
-    Bucket: AWS_BUCKET_NAME,
-    Key: file.originalname,
-    Body: file.buffer,
-    ContentType: file.mimetype,
+//     return url;
+//   } catch (error) {
+//     console.error("Error uploading to S3:", error);
+//     throw error;
+//   }
+// };
+
+import { S3Client, PutObjectCommand, PutObjectCommandInput } from "@aws-sdk/client-s3";
+
+export const uploadToS3 = async (buffer: Buffer, key: string): Promise<string> => {
+  // Log environment variables
+  console.log('AWS Region:', process.env.AWS_REGION);
+  console.log('AWS Bucket Name:', process.env.AWS_BUCKET_NAME);
+
+  // Validate environment variables
+  const region = process.env.AWS_REGION;
+  const bucket = process.env.AWS_BUCKET_NAME;
+
+  if (!region) {
+    throw new Error("AWS_REGION is not defined");
+  }
+  if (!bucket) {
+    throw new Error("AWS_BUCKET_NAME is not defined");
+  }
+
+  // Create an S3 client
+  const client = new S3Client({ region });
+
+  // Set parameters for the PutObjectCommand
+  const params: PutObjectCommandInput = {
+    Bucket: bucket,
+    Key: key,
+    Body: buffer,
+    ContentType: "image/jpeg",
+    // ACL: "public-read" // Ensure ACL is set if needed
   };
 
   try {
-    const upload = new Upload({
-      client: s3Client,
-      params: uploadParams,
-    });
+    // Create and send the PutObjectCommand
+    const command = new PutObjectCommand(params);
+    const data = await client.send(command);
 
-    const data = await upload.done();
-    console.log('File uploaded successfully:', data);
-    return { Location: `https://${AWS_BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/${uploadParams.Key}` };
+    // Log success
+    console.log("Successfully uploaded to S3", data);
+
+    // Generate the correct URL
+    const url = `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+    console.log("Profile Image URL:", url);
+
+    return url;
   } catch (error) {
-    console.error('Error uploading file to S3:', error);
+    // Log error
+    console.error("Error uploading to S3:", error);
     throw error;
   }
 };

@@ -93,3 +93,12 @@ export type NonSensitiveUserProps = {
     bio?: string;
     dateOfBirth?: Date;
 }
+
+export type UserDetails = {
+    id: string;
+    username: string;
+    displayName?: string;
+    profileImage?: string;
+    titleImage?: string;
+    bio?: string;
+}
