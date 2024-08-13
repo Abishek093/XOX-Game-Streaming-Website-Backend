@@ -7,9 +7,10 @@ import { log } from 'console';
 import PostModel, { IPost } from '../data/PostModel';
 import { String } from 'aws-sdk/clients/acm';
 import LikeModel, { ILike } from '../data/LikesModel';
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { ObjectId, Schema, Document } from 'mongoose';
 import CommentModel, { IComment } from '../data/CommentModel';
-import ReportModel,{IReport} from '../data/ReportModel';
+import ReportModel, { IReport } from '../data/ReportModel';
+import { Community, ICommunity, ICommunityWithCounts } from '../data/CommunityModel';
 
 
 export class MongoUserRepository implements UserRepository {
@@ -95,6 +96,26 @@ export class MongoUserRepository implements UserRepository {
     }
   }
 
+
+  async updateProfilePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+    try {
+      const user = await UserModel.findById(userId);
+      if (!user) {
+        throw new Error('User not found');
+      }
+      const isMatch = await bcrypt.compare(currentPassword, user.password);
+      if (!isMatch) {
+        throw new Error('Current password is incorrect');
+      }
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(newPassword, salt);
+      await UserModel.findByIdAndUpdate(userId, { password: hashedPassword });
+      console.log('Password updated successfully');
+    } catch (error) {
+      console.error('Failed to update password:', error);
+      throw new Error('Failed to update password');
+    }
+  }
 
   async updateUserProfileImage(userId: string, profileImageUrl: string): Promise<User> {
     const updatedUser = await UserModel.findByIdAndUpdate(userId, { profileImage: profileImageUrl }, { new: true });
@@ -191,7 +212,7 @@ export class MongoUserRepository implements UserRepository {
     return like
   }
 
-  async unlikePost(userId: string, postId: string): Promise<void> {
+  async unlikePost(userId: string, postId: string): Promise<ILike> {
     const post = await PostModel.findById(postId);
     console.log("post in mongooo", post)
     if (!post) {
@@ -203,6 +224,7 @@ export class MongoUserRepository implements UserRepository {
     if (!unlike) {
       throw new Error('Like not found');
     }
+    return unlike
   }
 
   async addComment(postId: string, userId: string, comment: string): Promise<IComment> {
@@ -274,22 +296,22 @@ export class MongoUserRepository implements UserRepository {
         },
         { new: true }
       );
-  
+
       if (!updatedPost) {
         throw new Error('Post not found');
       }
-      } catch (error:any) {
+    } catch (error: any) {
       throw new Error(error);
     }
   }
 
-  async reportPost(userId:string, postId:string, reason:string):Promise<IReport>{
-    const user = await UserModel.findById({_id : userId})
-    const post = await PostModel.findById({_id : postId})
-    if(!user){
+  async reportPost(userId: string, postId: string, reason: string): Promise<IReport> {
+    const user = await UserModel.findById({ _id: userId })
+    const post = await PostModel.findById({ _id: postId })
+    if (!user) {
       throw new Error('User not found!')
     }
-    if(!post){
+    if (!post) {
       throw new Error('Post not found!')
     }
     const newReport = new ReportModel({
@@ -302,5 +324,130 @@ export class MongoUserRepository implements UserRepository {
     await newReport.save()
     return newReport
   }
+
+  async deletePost(postId: string): Promise<void> {
+    const existingPost = await PostModel.findById(postId);
+    
+    if (!existingPost) {
+        throw new Error('Post not found');
+    }
+
+    await LikeModel.deleteMany({ postId });
+    await CommentModel.deleteMany({ postId });
+    await PostModel.findByIdAndDelete(postId);
+}
+
+
+  async createCommunity(userId: string, communityName: string, description: string, postPermission: string, image: string): Promise<ICommunity> {
+    const existingCommunity = await Community.findOne({ name: communityName })
+    if (existingCommunity) {
+      console.log('Community already exist')
+      throw new Error('Community already exist')
+    }
+    const newCommunity = new Community({
+      name: communityName,
+      description: description,
+      createdBy: userId,
+      postPermission: postPermission,
+      image: image
+    }
+    )
+    await newCommunity.save()
+    return newCommunity
+  }
+
+  async fetchAllCommunities(): Promise<ICommunityWithCounts[]> {
+    const communities = await Community.find().lean().exec();
+    return communities.map(community => ({
+      ...community,
+      postCount: community.posts ? community.posts.length : 0,
+      followerCount: community.followers ? community.followers.length : 0,
+    })) as ICommunityWithCounts[];
+  }
+
+  async fetchCommunity(communityId: string): Promise<ICommunity | null> {
+    const communityData = await Community.findById(communityId)
+      .populate({
+        path: 'posts',
+        model: PostModel,
+        populate: [
+          {
+            path: 'author',
+            model: UserModel,
+            select: 'username displayName profileImage createdAt updatedAt',
+          },
+          {
+            path: 'likeCount',
+          }
+        ],
+        select: 'title content author createdAt updatedAt',
+        options: { sort: { createdAt: -1 } },
+      })
+      .exec();
+
+    log(communityData);
+    return communityData;
+  }
+
+
+  async createCommunityPost(
+    username: string,
+    postImageUrl: string,
+    description: string,
+    communityId: string
+  ): Promise<IPost> {
+    console.log('username', username)
+    const user = await this.findUserByUsername(username);
+    if (!user) {
+      throw new Error('User not found!');
+    }
+
+    const newPost = new PostModel({
+      title: description,
+      content: postImageUrl,
+      author: user.id,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    await newPost.save();
+
+    const community = await Community.findById(communityId);
+    if (!community) {
+      throw new Error('Community not found!');
+    }
+
+    community.posts.push(newPost._id as mongoose.Types.ObjectId);
+    await community.save();
+
+    return newPost;
+  }
+
+  async updateCommunity(communityId: string, updateData: Partial<ICommunity>): Promise<ICommunity | null> {
+    try {
+      const updatedCommunity = await Community.findByIdAndUpdate(communityId, updateData, { new: true });
+      return updatedCommunity;
+    } catch (error) {
+      console.error('Error updating community:', error);
+      throw error;
+    }
+  }
+
+  async deleteCommunity(communityId: string): Promise<void> {
+    try {
+      const existingCommunity = await Community.findById(communityId);
+  
+      if (!existingCommunity) {
+        throw new Error('Community not found');
+      }
+  
+      await Community.findByIdAndDelete(communityId);
+    } catch (error) {
+      console.error('Error deleting community:', error);
+      throw error;
+    }
+  }
+
+
+
 }
 

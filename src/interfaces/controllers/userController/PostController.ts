@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import {ProfileImageUseCase, TitleImageUseCase, UpdateUserUseCase } from '../../../application/use-cases/UserUseCases/UpdateUserUseCases';
 import { MongoUserRepository } from '../../../infrastructure/repositories/MongoUserRepository';
 import { log } from 'console';
-import { AddCommentUseCase, CheckLikeUseCase, CreatePostUseCase, FetchCommentUseCase, FetchPostsUseCases, FetchPostUseCase, PostLikeUseCase, PostUnlikeUseCase, UpdatePostUseCase } from '../../../application/use-cases/UserUseCases/PostUseCases';
+import { AddCommentUseCase, CheckLikeUseCase, CreatePostUseCase, DeletePostUseCase, FetchCommentUseCase, FetchPostsUseCases, FetchPostUseCase, PostLikeUseCase, PostUnlikeUseCase, UpdatePostUseCase } from '../../../application/use-cases/UserUseCases/PostUseCases';
 import { handleResponse } from '../../../utils/responseHandler';
 import { requestValueList } from 'aws-sdk/clients/customerprofiles';
 
@@ -16,6 +16,8 @@ const addCommentUseCase = new AddCommentUseCase(userRepository)
 const fetchCommentUseCase = new FetchCommentUseCase(userRepository)
 const fetchPostUseCase = new FetchPostUseCase(userRepository)
 const updatePostUseCase = new UpdatePostUseCase(userRepository)
+const deletePostUseCase = new DeletePostUseCase(userRepository)
+
 
 export const createPost = async(req: Request, res: Response):Promise<void> => {
     const {username, croppedImage, description} = req.body
@@ -73,7 +75,7 @@ export const unlikePost = async (req: Request, res: Response) => {
   console.log("Unlike post controller", userId, postId)
   try {
     const unlike = await postunlikeUseCase.execute(userId, postId);
-    handleResponse(res, 200, 'success');
+    handleResponse(res, 200, unlike);
   } catch (error:any) {
     handleResponse(res, 500, error.message); 
   }
@@ -138,5 +140,17 @@ export const updatePost = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error updating post:', error);
     res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+export const deletePost = async (req: Request, res: Response) => {
+  try {
+    const { postId } = req.params;
+    console.log(postId);
+    await deletePostUseCase.execute(postId);
+    handleResponse(res, 200, 'Post deleted successfully');
+  } catch (error: any) {
+    console.error('Error deleting post:', error.message);
+    handleResponse(res, 400, `Error deleting post: ${error.message}`);
   }
 };

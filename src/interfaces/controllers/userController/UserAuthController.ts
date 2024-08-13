@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { CreateUserUseCase, VerifyUserUseCase, CreateGoogleUserUseCase, RefreshAccessTokenUseCase, UpdatePasswordUseCase, CheckUsernameUseCase } from '../../../application/use-cases/UserUseCases/AuthUseCase';
+import { CreateUserUseCase, VerifyUserUseCase, CreateGoogleUserUseCase, RefreshAccessTokenUseCase, UpdatePasswordUseCase, CheckUsernameUseCase, UpdateProfilePasswordUseCase } from '../../../application/use-cases/UserUseCases/AuthUseCase';
 import { MongoUserRepository } from '../../../infrastructure/repositories/MongoUserRepository';
 import { handleResponse } from '../../../utils/responseHandler';
 import { sendOtp } from '../../../utils/nodemailer';
@@ -16,7 +16,7 @@ const createGoogleUserUseCase = new CreateGoogleUserUseCase(userRepository);
 const updatePasswordUseCase = new UpdatePasswordUseCase(userRepository)
 const checkUsernameUseCase = new CheckUsernameUseCase(userRepository)
 const refreshAccessTokenUseCase = new RefreshAccessTokenUseCase();
-
+const updateProfilePasswordUseCase = new UpdateProfilePasswordUseCase(userRepository)
 
 export const createUser = async (req: Request, res: Response): Promise<void> => {
     const { email, userName, displayName, birthDate, password } = req.body;
@@ -179,6 +179,20 @@ export const updatePassword = async (req: Request, res: Response): Promise<void>
         res.status(400).json({ message: error.message });
     }
 };
+
+
+export const updateProfilePassword = async (req: Request, res: Response): Promise<void> => {
+    const { email, currentPassword, newPassword } = req.body;
+
+    try {
+        await updateProfilePasswordUseCase.execute(email, currentPassword, newPassword);
+        res.status(200).json({ status: 200, message: 'Password updated successfully' });
+    } catch (error: any) {
+        console.error('Update password failed:', error);
+        res.status(400).json({ status: 400, message: error.message });
+    }
+};
+
 
 export const refreshAccessToken = async (req: Request, res: Response): Promise<void> => {
     const { refreshToken } = req.body;

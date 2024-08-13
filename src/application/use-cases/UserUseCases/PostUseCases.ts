@@ -12,7 +12,6 @@ import { addComment } from '../../../interfaces/controllers/userController/PostC
 export class CreatePostUseCase {
   constructor(private userRepository: UserRepository) { }
   async execute(username: string, croppedImage: Buffer, description: string): Promise<IPost> {
-    console.log("username",username, "croppedImage",croppedImage, "description", description)
     const key = `posts/${username}/${uuidv4()}.jpeg`;
     const postImageUrl = await uploadToS3(croppedImage, key)
     const newPost = await this.userRepository.createPost(username, postImageUrl, description)
@@ -97,5 +96,13 @@ export class UpdatePostUseCase{
   async execute(postId: string, description: string, croppedImage: string){
     const updatePost = this.userRepository.updatePost(postId, description, croppedImage)
     return updatePost
+  }
+}
+
+export class DeletePostUseCase {
+  constructor(private userRepository: UserRepository) {}
+
+  async execute(postId: string) {
+    await this.userRepository.deletePost(postId);
   }
 }

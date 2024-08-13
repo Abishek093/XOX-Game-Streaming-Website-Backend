@@ -4,6 +4,7 @@ import { generateToken, verifyRefreshToken } from '../../../utils/jwt';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import { error, log } from 'console';
+import UserModel from '../../../infrastructure/data/UserModel';
 
 export class CreateUserUseCase {
   constructor(private userRepository: UserRepository) { }
@@ -54,6 +55,26 @@ export class UpdatePasswordUseCase {
     }
 
     await this.userRepository.updateUserPassword(user.id, newPassword);
+  }
+}
+
+
+export class UpdateProfilePasswordUseCase {
+  constructor(private userRepository: UserRepository) {}
+  async execute(email: string, currentPassword: string, newPassword: string): Promise<void> {
+    const user = await this.userRepository.findUserByEmail(email);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    if (user.isBlocked || !user.isVerified) {
+      throw new Error('Account is not verified');
+    }
+
+    if (user.isGoogleUser) {
+      throw new Error('Cannot update password for Google users');
+    }
+    await this.userRepository.updateProfilePassword(user.id, currentPassword,newPassword);
   }
 }
 
