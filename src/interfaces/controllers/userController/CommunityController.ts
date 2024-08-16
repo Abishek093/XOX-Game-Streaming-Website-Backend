@@ -4,6 +4,7 @@ import { handleResponse } from '../../../utils/responseHandler'
 import { CreateCommunityPostUseCase, CreateCommunityUseCase, DeleteCommunityUseCase, FetchAllCommunitiesUseCase, FetchCommunityUseCase, UpdateCommunityUseCase } from '../../../application/use-cases/UserUseCases/CommunityUseCasse'
 import { MongoUserRepository } from '../../../infrastructure/repositories/MongoUserRepository'
 import { ICommunity } from '../../../infrastructure/data/CommunityModel'
+import { Error } from 'mongoose'
 
 const userRepository = new MongoUserRepository()
 const createCommunityUseCase = new CreateCommunityUseCase(userRepository)
@@ -17,12 +18,12 @@ const deleteCommunityUseCase = new DeleteCommunityUseCase(userRepository)
 export const createCommunity = async (req: Request, res: Response): Promise<void> => {
   const { userID, communityName, description, postPermission, communityImage } = req.body
   try {
-    log('communityImage', communityImage)
     const buffer = Buffer.from(communityImage, 'base64');
     log('buffer', buffer)
     const newCommunity = await createCommunityUseCase.execute(userID, communityName, description, postPermission, buffer)
     handleResponse(res, 200, newCommunity)
   } catch (error: any) {
+    console.log(error)
     handleResponse(res, 500, error.message)
   }
 }
