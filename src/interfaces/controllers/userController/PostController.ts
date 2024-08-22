@@ -26,7 +26,7 @@ export const createPost = async(req: Request, res: Response):Promise<void> => {
         const buffer = Buffer.from(croppedImage, 'base64');
         const result = await createPostUseCase.execute(username, buffer, description)
         log(result)
-        handleResponse(res, 200, {message : 'Post added successfully'})
+        handleResponse(res, 200, result)
     } catch (error:any) {
       handleResponse(res, 500, {message: error.message})
     }

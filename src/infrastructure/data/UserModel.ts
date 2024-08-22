@@ -40,6 +40,7 @@ const UserSchema: Schema = new Schema({
     isBlocked:{type: Boolean, default: false}
 });
 
+
 const UserModel = mongoose.model<IUser>('User', UserSchema);
 
 export default UserModel;

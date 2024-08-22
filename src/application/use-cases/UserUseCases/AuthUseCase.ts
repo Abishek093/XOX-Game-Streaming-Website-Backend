@@ -1,7 +1,7 @@
 import { UserRepository } from '../../../domain/repositories/UserRepository';
 import { User, UserProps, AuthenticatedUser, AuthResponse } from '../../../domain/entities/User';
 import { generateToken, verifyRefreshToken } from '../../../utils/jwt';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { error, log } from 'console';
 import UserModel from '../../../infrastructure/data/UserModel';

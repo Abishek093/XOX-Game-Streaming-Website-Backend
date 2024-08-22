@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { ProfileImageUseCase, TitleImageUseCase, UpdateUserUseCase } from '../../../application/use-cases/UserUseCases/UpdateUserUseCases';
 import { MongoUserRepository } from '../../../infrastructure/repositories/MongoUserRepository';
 import { log } from 'console';
+import { handleResponse } from '../../../utils/responseHandler';
 
 const userRepository = new MongoUserRepository();
 const updateUserUseCase = new UpdateUserUseCase(userRepository);

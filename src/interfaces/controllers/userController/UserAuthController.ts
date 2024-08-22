@@ -18,12 +18,40 @@ const checkUsernameUseCase = new CheckUsernameUseCase(userRepository)
 const refreshAccessTokenUseCase = new RefreshAccessTokenUseCase();
 const updateProfilePasswordUseCase = new UpdateProfilePasswordUseCase(userRepository)
 
+// export const createUser = async (req: Request, res: Response): Promise<void> => {
+//     const { email, userName, displayName, birthDate, password } = req.body;
+//     try {
+//         const user = await createUserUseCase.execute(email, userName, displayName, new Date(birthDate), password);
+//         const userData = await userRepository.findUserByEmail(user.email);
+//         console.log("userData", userData);
+
+//         if (userData) {
+//             const userID = userData.id
+//             const otp = generateOTP();
+//             const otpEntry = new OtpModel({ otp, userId: userID });
+//             await otpEntry.save();
+//             await sendOtp(email, otp);
+//             handleResponse(res, 201, user.id);
+//         }
+//     } catch (error) {
+//         console.error('Error in createUser:', error);
+//         if (error instanceof Error) {
+//             handleResponse(res, 400, error.message);
+//         } else {
+//             handleResponse(res, 400, 'An unknown error occurred');
+//         }
+//     }
+// };
+
+
+
 export const createUser = async (req: Request, res: Response): Promise<void> => {
-    const { email, userName, displayName, birthDate, password } = req.body;
+    const { email, username, displayName, birthDate, password } = req.body;
+    console.log("userData", email, username, displayName, birthDate, password);
     try {
-        const user = await createUserUseCase.execute(email, userName, displayName, new Date(birthDate), password);
+        const user = await createUserUseCase.execute(email, username, displayName, new Date(birthDate), password);
         const userData = await userRepository.findUserByEmail(user.email);
-        console.log("userData", userData);
+        
 
         if (userData) {
             const userID = userData.id
@@ -43,9 +71,12 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
     }
 };
 
+
+
 export const verifyOtp = async (req: Request, res: Response): Promise<void> => {
     const { otp, email } = req.body;
     try {
+        console.log("otp", otp, "email", email)
         const user = await userRepository.findUserByEmail(email);
         if (!user) {
             return handleResponse(res, 404, 'Failed to verify the user.');
@@ -58,6 +89,7 @@ export const verifyOtp = async (req: Request, res: Response): Promise<void> => {
             return handleResponse(res, 404, 'Invalid otp!');
         }
         await userRepository.verifyUser(user.id);
+        log('4')
             return handleResponse(res, 200, 'User verified successfully');
     } catch (error) {
         console.error('Error in verifyOtp:', error);

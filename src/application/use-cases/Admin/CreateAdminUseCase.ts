@@ -1,7 +1,7 @@
 import { AdminRepository } from '../../../domain/repositories/AdminRepository'
 import { Admin, AdminProps, AuthenticatedAdmin } from '../../../domain/entities/Admin/Admin';
 import { generateToken } from '../../../utils/jwt';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 export class VerifyUserUseCase {
     constructor(private adminRepository: AdminRepository) {}

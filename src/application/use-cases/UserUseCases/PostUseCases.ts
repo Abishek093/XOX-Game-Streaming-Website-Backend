@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { IPost } from '../../../infrastructure/data/PostModel';
 import LikeModel from '../../../infrastructure/data/LikesModel';
 import { addComment } from '../../../interfaces/controllers/userController/PostController';
+import { IComment } from '../../../infrastructure/data/CommentModel';
 
 
 export class CreatePostUseCase {
@@ -69,7 +70,7 @@ export class CheckLikeUseCase{
 
 export class AddCommentUseCase{
   constructor(private userRepository: UserRepository){}
-  async execute(postId: string, userId: string, comment: string){
+  async execute(postId: string, userId: string, comment: string):Promise<any>{
     const newComment = this.userRepository.addComment(postId, userId, comment)
     return newComment
   }
