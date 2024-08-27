@@ -74,4 +74,5 @@ export interface UserRepository {
   acceptFriendRequest(requestId: string): Promise<void>;
   rejectFriendRequest(requestId: string): Promise<void>;
   handleUnfollow(userId: string, followerId: string): Promise<void>;
+  verifyOtp(otp: string, email: string): Promise<User | null> 
 }

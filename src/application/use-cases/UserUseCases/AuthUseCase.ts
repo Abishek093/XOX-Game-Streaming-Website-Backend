@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { error, log } from 'console';
 import UserModel from '../../../infrastructure/data/UserModel';
+import { publishToQueue } from '../../../services/RabbitMQPublisher';
 
 export class CreateUserUseCase {
   constructor(private userRepository: UserRepository) { }
@@ -177,6 +178,39 @@ export class CreateGoogleUserUseCase {
     }
   }
 }
+
+
+      export class VerifyOtpUseCase {
+        constructor(private userRepository: UserRepository) {}
+
+        async execute(otp: string, email: string): Promise<User | null> {
+            const user = await this.userRepository.verifyOtp(otp, email);
+            
+            // if (user) {
+            //     await publishToQueue('chat-service-user-data', {
+            //         userId: user.id,
+            //         username: user.username,
+            //         displayname: user.displayName,
+            //         profileimage: user.profileImage,
+            //     });
+            //     console.log("User data published to queue:", user);
+            // }
+            if (user) {
+              try {
+                await publishToQueue('chat-service-user-data', {
+                  userId: user.id,
+                  username: user.username,
+                  displayName: user.displayName,
+                  profileImage: user.profileImage,
+                });
+                console.log("User data published to queue:", user);
+              } catch (error) {
+                console.error("Failed to publish message to queue:", error);
+              }
+            }           
+            return user;
+        }
+      }
 
 
 export class RefreshAccessTokenUseCase {

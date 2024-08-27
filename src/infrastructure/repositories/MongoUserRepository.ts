@@ -3,7 +3,7 @@ import { User, UserProps } from "../../domain/entities/User";
 import UserModel, { IUser } from "../data/UserModel";
 import { toUserProps } from "../../utils/mapper";
 import bcrypt from "bcryptjs";
-import { log } from "console";
+import { log, profile } from "console";
 import PostModel, { IPost } from "../data/PostModel";
 import { String } from "aws-sdk/clients/acm";
 import LikeModel, { ILike } from "../data/LikesModel";
@@ -20,6 +20,9 @@ import {
   IFollower,
   IFollowerWithDetails,
 } from "../data/FollowerModel";
+import OtpModel from "../data/otpModel";
+import { publishToQueue } from "../../services/RabbitMQPublisher";
+
 
 export class MongoUserRepository implements UserRepository {
   async createUser(user: User): Promise<User> {
@@ -51,6 +54,26 @@ export class MongoUserRepository implements UserRepository {
       ...userProps,
     });
   }
+
+  async verifyOtp(otp: string, email: string): Promise<User | null> {
+    const user = await this.findUserByEmail(email);
+    if (!user) {
+        throw new Error('Failed to verify the user.');
+    }
+
+    const otpDetails = await OtpModel.findOne({ userId: user.id }).sort({ createdAt: -1 }).limit(1);
+    if (!otpDetails) {
+        throw new Error('Otp time has expired! Try resend Otp.');
+    }
+
+    if (otpDetails.otp !== parseInt(otp)) {
+        throw new Error('Invalid otp!');
+    }
+
+    const verifiedUser = await this.verifyUser(user.id);
+    return verifiedUser;
+}
+
 
   async findUserByUsername(username: string): Promise<User | null> {
     const user = await UserModel.findOne({ username });
@@ -101,6 +124,8 @@ export class MongoUserRepository implements UserRepository {
     if (!updatedUser) {
       throw new Error("User not found");
     }
+
+    await publishToQueue('chat-service-user-data', { userId, ...updateData });
 
     return new User(toUserProps(updatedUser));
   }
@@ -287,7 +312,7 @@ export class MongoUserRepository implements UserRepository {
     if (!post) {
       throw new Error("Post not found");
     }
-    const user = await UserModel.findById(userId).exec(); 
+    const user = await UserModel.findById(userId).exec();
     if (!user) {
       throw new Error("User not found");
     }
@@ -298,19 +323,19 @@ export class MongoUserRepository implements UserRepository {
     });
 
     await newComment.save();
-  return {
-    _id: newComment._id,
-    postId: newComment.postId,
-    author: newComment.author,
-    content: newComment.content,
-    createdAt: newComment.createdAt,
-    userDetails: {
-      _id: user._id,
-      username: user.username,
-      displayName: user.displayName,
-      profileImage: user.profileImage,
-    },
-  };
+    return {
+      _id: newComment._id,
+      postId: newComment.postId,
+      author: newComment.author,
+      content: newComment.content,
+      createdAt: newComment.createdAt,
+      userDetails: {
+        _id: user._id,
+        username: user.username,
+        displayName: user.displayName,
+        profileImage: user.profileImage,
+      },
+    };
     // return newComment;
   }
 

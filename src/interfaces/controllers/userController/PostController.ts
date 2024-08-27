@@ -5,6 +5,8 @@ import { log } from 'console';
 import { AddCommentUseCase, CheckLikeUseCase, CreatePostUseCase, DeletePostUseCase, FetchCommentUseCase, FetchPostsUseCases, FetchPostUseCase, PostLikeUseCase, PostUnlikeUseCase, UpdatePostUseCase } from '../../../application/use-cases/UserUseCases/PostUseCases';
 import { handleResponse } from '../../../utils/responseHandler';
 import { requestValueList } from 'aws-sdk/clients/customerprofiles';
+import { socketService } from '../../../server';
+import PostModel from '../../../infrastructure/data/PostModel';
 
 const userRepository = new MongoUserRepository();
 const createPostUseCase = new CreatePostUseCase(userRepository)
@@ -12,7 +14,7 @@ const fetchPostsUseCases = new FetchPostsUseCases(userRepository)
 const postLikeUseCase = new PostLikeUseCase(userRepository)
 const postunlikeUseCase = new PostUnlikeUseCase(userRepository)
 const checkLikeUseCase = new CheckLikeUseCase()
-const addCommentUseCase = new AddCommentUseCase(userRepository)
+const addCommentUseCase = new AddCommentUseCase(userRepository) 
 const fetchCommentUseCase = new FetchCommentUseCase(userRepository)
 const fetchPostUseCase = new FetchPostUseCase(userRepository)
 const updatePostUseCase = new UpdatePostUseCase(userRepository)
@@ -44,42 +46,86 @@ export const createPost = async(req: Request, res: Response):Promise<void> => {
 //     handleResponse(res, 404, error.message)
 //     console.log(error.message)
 //   }
-// }
-export const getPosts = async (req: Request, res: Response): Promise<void> => {
-  log('Call one in post controller');
-  const userId = req.params.id;
-  log(userId, 'User id in post controller');
-  try {
-    const posts = await fetchPostsUseCases.execute(userId);
-    console.log('posts in controller', posts);
-    handleResponse(res, 200, posts);
-  } catch (error: any) {
-    handleResponse(res, 404, error.message);
-    console.log(error.message);
-  }
-};
+  // }
+    export const getPosts = async (req: Request, res: Response): Promise<void> => {
+      log('Call one in post controller');
+      const userId = req.params.id;
+      log(userId, 'User id in post controller');
+      try {
+        const posts = await fetchPostsUseCases.execute(userId);
+        console.log('posts in controller', posts);
+        handleResponse(res, 200, posts);
+      } catch (error: any) {
+        handleResponse(res, 404, error.message);
+        console.log(error.message);
+      }
+    };
 
-export const likePost = async(req: Request, res: Response)=>{
-  try {
-    const {userId, postId} = req.body
-    console.log("Like post controller", userId, postId)
-    const like = await postLikeUseCase.execute(userId, postId)
-    handleResponse(res, 200, 'success')
-  } catch (error) {
+    // export const likePost = async(req: Request, res: Response)=>{
+    //   try {
+    //     const {userId, postId} = req.body
+    //     console.log("Like post controller", userId, postId)
+    //     const like = await postLikeUseCase.execute(userId, postId)  
+    //     socketService.emitLikePost(postId, likeCount + 1);
+    //     handleResponse(res, 200, 'success')
+    //   } catch (error) {
+        
+    //   }
+    // }
+
+    export const likePost = async (req: Request, res: Response) => {
+      try {
+          const { userId, postId } = req.body;
+  
+          await postLikeUseCase.execute(userId, postId);
+  
+          const updatedPost = await PostModel.findById(postId).exec();
+          if (!updatedPost) {
+              handleResponse(res, 404, 'Post not found');
+              return;
+          }
+  
+          socketService.emitLikePost(postId, updatedPost.likeCount ?? 0);
+          handleResponse(res, 200, 'success');
+      } catch (error: any) {
+          handleResponse(res, 500, error.message);
+      }
+  };
+
+  // export const unlikePost = async (req: Request, res: Response) => {
+  //   const { userId, postId } = req.body;
+  //   console.log("Unlike post controller", userId, postId)
+  //   try {
+  //     const unlike = await postunlikeUseCase.execute(userId, postId);
+  //     socketService.emitUnlikePost(postId, likeCount - 1);
+  //     handleResponse(res, 200, unlike);
+  //   } catch (error:any) {
+  //     handleResponse(res, 500, error.message); 
+  //   }
+  // };
+
+  export const unlikePost = async (req: Request, res: Response) => {
+    const { userId, postId } = req.body;
+    console.log("Unlike post controller", userId, postId);
     
-  }
-}
+    try {
+      await postunlikeUseCase.execute(userId, postId);
 
-export const unlikePost = async (req: Request, res: Response) => {
-  const { userId, postId } = req.body;
-  console.log("Unlike post controller", userId, postId)
-  try {
-    const unlike = await postunlikeUseCase.execute(userId, postId);
-    handleResponse(res, 200, unlike);
-  } catch (error:any) {
-    handleResponse(res, 500, error.message); 
-  }
-};
+      const updatedPost = await PostModel.findById(postId).exec();
+
+      if (!updatedPost) {
+        handleResponse(res, 404, 'Post not found');
+        return;
+      }
+
+      socketService.emitUnlikePost(postId, updatedPost.likeCount ?? 0);
+
+      handleResponse(res, 200, 'success');
+    } catch (error: any) {
+      handleResponse(res, 500, error.message);
+    }
+  };
+
 
 export const checkLike = async(req: Request, res: Response)=>{
   try {

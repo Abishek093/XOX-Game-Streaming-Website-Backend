@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { CreateUserUseCase, VerifyUserUseCase, CreateGoogleUserUseCase, RefreshAccessTokenUseCase, UpdatePasswordUseCase, CheckUsernameUseCase, UpdateProfilePasswordUseCase } from '../../../application/use-cases/UserUseCases/AuthUseCase';
+import { CreateUserUseCase, VerifyUserUseCase, CreateGoogleUserUseCase, RefreshAccessTokenUseCase, UpdatePasswordUseCase, CheckUsernameUseCase, UpdateProfilePasswordUseCase, VerifyOtpUseCase } from '../../../application/use-cases/UserUseCases/AuthUseCase';
 import { MongoUserRepository } from '../../../infrastructure/repositories/MongoUserRepository';
 import { handleResponse } from '../../../utils/responseHandler';
 import { sendOtp } from '../../../utils/nodemailer';
@@ -17,7 +17,7 @@ const updatePasswordUseCase = new UpdatePasswordUseCase(userRepository)
 const checkUsernameUseCase = new CheckUsernameUseCase(userRepository)
 const refreshAccessTokenUseCase = new RefreshAccessTokenUseCase();
 const updateProfilePasswordUseCase = new UpdateProfilePasswordUseCase(userRepository)
-
+const verifyOtpUseCase = new VerifyOtpUseCase(userRepository)
 // export const createUser = async (req: Request, res: Response): Promise<void> => {
 //     const { email, userName, displayName, birthDate, password } = req.body;
 //     try {
@@ -51,7 +51,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
     try {
         const user = await createUserUseCase.execute(email, username, displayName, new Date(birthDate), password);
         const userData = await userRepository.findUserByEmail(user.email);
-        
+
 
         if (userData) {
             const userID = userData.id
@@ -76,21 +76,8 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
 export const verifyOtp = async (req: Request, res: Response): Promise<void> => {
     const { otp, email } = req.body;
     try {
-        console.log("otp", otp, "email", email)
-        const user = await userRepository.findUserByEmail(email);
-        if (!user) {
-            return handleResponse(res, 404, 'Failed to verify the user.');
-        }
-        const otpDetails = await OtpModel.findOne({ userId: user.id }).sort({ createdAt: -1 }).limit(1);
-        if (!otpDetails) {
-            return handleResponse(res, 404, 'Otp time has expired! Try resend Otp.');
-        }
-        if (otpDetails.otp !== parseInt(otp)) {
-            return handleResponse(res, 404, 'Invalid otp!');
-        }
-        await userRepository.verifyUser(user.id);
-        log('4')
-            return handleResponse(res, 200, 'User verified successfully');
+        const response = await verifyOtpUseCase.execute(otp, email)
+        return handleResponse(res, 200, 'User verified successfully');
     } catch (error) {
         console.error('Error in verifyOtp:', error);
         if (error instanceof Error) {
@@ -118,7 +105,7 @@ export const googleAuth = async (req: Request, res: Response): Promise<void> => 
         const response = await createGoogleUserUseCase.execute(email, profileImage, userName);
 
         if ('isUsernameTaken' in response) {
-            handleResponse(res, 200, response); 
+            handleResponse(res, 200, response);
         } else {
             const { accessToken, refreshToken, user } = response as AuthenticatedUser;
             handleResponse(res, 200, { accessToken, refreshToken, user });
