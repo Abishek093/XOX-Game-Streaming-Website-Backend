@@ -29,18 +29,21 @@ import {
   acceptFriendRequest,
   rejectFriendRequest,
   unfollowUser,
+  fetchSuggestions,
 } from "../controllers/userController/FriendsControllet";
 import multer from "multer";
 import {
   addComment,
   checkLike,
   createPost,
+  deleteComment,
   deletePost,
   fetchComments,
   fetchPost,
   getPosts,
   likePost,
   unlikePost,
+  updateComment,
   updatePost,
 } from "../controllers/userController/PostController";
 import {
@@ -53,6 +56,9 @@ import {
   deleteCommunity,
   fetchAllCommunities,
   fetchCommunity,
+  fetchCommunityFollowers,
+  followCommunity,
+  unfollowCommunity,
   updateCommunity,
 } from "../controllers/userController/CommunityController";
 
@@ -100,6 +106,10 @@ userRouter.get("/fetch-post/:postId", fetchPost);
 userRouter.post("/update-post", protectUser, updatePost);
 
 userRouter.post("/add-comment", protectUser, addComment);
+userRouter.put('/update-comment/:commentId', updateComment)
+userRouter.delete('/deleteComment/:commentId', deleteComment);
+
+
 userRouter.get("/fetch-comments/:postId", fetchComments);
 userRouter.get("/report-reasons", reportReasons);
 userRouter.post("/report-post", protectUser, reportPost);
@@ -111,4 +121,10 @@ userRouter.patch("/update-community/:communityId", updateCommunity);
 userRouter.delete("/delete-community/:communityId", deleteCommunity);
 userRouter.delete("/delete-post/:postId", deletePost);
 
+
+userRouter.post("/follow/:communityId/user/:userId", protectUser, followCommunity);
+userRouter.delete("/unfollow/:communityId/user/:userId", protectUser, unfollowCommunity);
+userRouter.get("/fetchFollowers/:communityId", fetchCommunityFollowers);
+
+userRouter.get("/fetch-suggestions", fetchSuggestions)
 export default userRouter;

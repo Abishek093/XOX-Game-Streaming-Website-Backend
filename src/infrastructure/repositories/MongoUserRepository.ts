@@ -58,21 +58,21 @@ export class MongoUserRepository implements UserRepository {
   async verifyOtp(otp: string, email: string): Promise<User | null> {
     const user = await this.findUserByEmail(email);
     if (!user) {
-        throw new Error('Failed to verify the user.');
+      throw new Error('Failed to verify the user.');
     }
 
     const otpDetails = await OtpModel.findOne({ userId: user.id }).sort({ createdAt: -1 }).limit(1);
     if (!otpDetails) {
-        throw new Error('Otp time has expired! Try resend Otp.');
+      throw new Error('Otp time has expired! Try resend Otp.');
     }
 
     if (otpDetails.otp !== parseInt(otp)) {
-        throw new Error('Invalid otp!');
+      throw new Error('Invalid otp!');
     }
 
     const verifiedUser = await this.verifyUser(user.id);
     return verifiedUser;
-}
+  }
 
 
   async findUserByUsername(username: string): Promise<User | null> {
@@ -374,10 +374,28 @@ export class MongoUserRepository implements UserRepository {
     return comments;
   }
 
+  async updateComment(commentId: string, editContent: string): Promise<IComment | null> {
+    const comment = await CommentModel.findByIdAndUpdate(
+      { _id: commentId },
+      { content: editContent },
+      { new: true }
+    );
+
+    return comment;
+  }
+
+  async deleteComment(commentId: string): Promise<void> {
+    const result = await CommentModel.findByIdAndDelete(commentId);
+    if (!result) {
+      throw new Error("Comment not found");
+    }
+  }
+
   async fetchPost(postId: string): Promise<IPost | null> {
     const post = await PostModel.findById(postId).exec();
     return post;
   }
+
 
   async updatePost(
     postId: string,
@@ -454,7 +472,7 @@ export class MongoUserRepository implements UserRepository {
     const newCommunity = new Community({
       name: communityName,
       description: description,
-      createdBy: userId,
+      createdBy: userId,      
       postPermission: postPermission,
       image: image,
     });
@@ -579,12 +597,12 @@ export class MongoUserRepository implements UserRepository {
   }
 
   async fetchFollowers(userId: string): Promise<IFollower[]> {
-    const followers = await Follower.find({ userId }).populate("followerId");
+    const followers = await Follower.find({ userId, status: 'Accepted' }).populate("followerId");
     return followers as IFollower[];
-  }
+}
 
   async fetchFollowing(userId: string): Promise<IFollower[]> {
-    const following = await Follower.find({ followerId: userId }).populate(
+    const following = await Follower.find({ followerId: userId, status: 'Accepted' }).populate(
       "userId"
     );
     return following as IFollower[];
@@ -627,7 +645,48 @@ export class MongoUserRepository implements UserRepository {
     await Follower.findByIdAndUpdate(requestId, { status: "Rejected" });
   }
 
+  async findFollowRequest(followerId: string, userId: string): Promise<IFollower | null> {
+    return Follower.findOne({ userId, followerId });
+  }
+
   async handleUnfollow(userId: string, followerId: string): Promise<void> {
-    await Follower.findOneAndDelete({ userId: userId, followerId: followerId });
+    await Follower.findOneAndDelete({ userId, followerId });
+  }
+
+
+
+  async followCommunity(userId: string, communityId: string): Promise<void> {
+    const existingFollow = await Follower.findOne({
+      communityId: communityId,
+      userId: userId,
+    });
+    if (existingFollow) {
+      existingFollow.status = "Requested";
+    } else {
+      const follow = new Follower({
+        communityId,
+        userId,
+        status: "Requested",
+      });
+      await follow.save();
+    }
+  }
+  
+  async fetchCommunityFollowers(communityId: string): Promise<IFollower[]> {
+    const followers = await Follower.find({ communityId }).populate("userId");
+    return followers as IFollower[];
+  }
+  
+  async handleCommunityUnfollow(userId: string, communityId: string): Promise<void> {
+    await Follower.findOneAndDelete({ communityId: communityId, userId: userId });
+  }
+
+  
+  async handleFetchSuggestions(): Promise<IUser[]> {
+    const suggestions = await UserModel.find()
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .select('id username displayName profileImage');
+    return suggestions;
   }
 }

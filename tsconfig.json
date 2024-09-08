@@ -8,6 +8,9 @@
         "esModuleInterop": true,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
-        "types": ["node", "express", "./src/utils/types/session"]
+        "types": ["node", 
+        "express", 
+        // "./src/utils/types/session"
+    ]
     }
 }

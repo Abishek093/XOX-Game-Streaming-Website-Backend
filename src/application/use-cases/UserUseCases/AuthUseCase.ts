@@ -6,6 +6,8 @@ import crypto from 'crypto';
 import { error, log } from 'console';
 import UserModel from '../../../infrastructure/data/UserModel';
 import { publishToQueue } from '../../../services/RabbitMQPublisher';
+import { publishUserCreationMessage } from '../../../infrastructure/queues/circuitBreaker';
+
 
 export class CreateUserUseCase {
   constructor(private userRepository: UserRepository) { }
@@ -13,12 +15,12 @@ export class CreateUserUseCase {
   async execute(email: string, username: string, displayName: string, dateOfBirth: Date, password: string): Promise<User> {
     log("entering to creating user...")
     const existingUser = await this.userRepository.findUserByEmail(email);
-    const existingUsername =  await this.userRepository.findUserByUsername(username);
+    const existingUsername = await this.userRepository.findUserByUsername(username);
     if (existingUser) {
 
       throw new Error('User with this email already exists');
     }
-    if(existingUsername){
+    if (existingUsername) {
       log("username alerady exist")
       throw new Error('Username already exists')
     }
@@ -39,7 +41,7 @@ export class CreateUserUseCase {
 }
 
 export class UpdatePasswordUseCase {
-  constructor(private userRepository: UserRepository) {}
+  constructor(private userRepository: UserRepository) { }
 
   async execute(newPassword: string, email: string): Promise<void> {
     const user = await this.userRepository.findUserByEmail(email);
@@ -61,7 +63,7 @@ export class UpdatePasswordUseCase {
 
 
 export class UpdateProfilePasswordUseCase {
-  constructor(private userRepository: UserRepository) {}
+  constructor(private userRepository: UserRepository) { }
   async execute(email: string, currentPassword: string, newPassword: string): Promise<void> {
     const user = await this.userRepository.findUserByEmail(email);
     if (!user) {
@@ -75,7 +77,7 @@ export class UpdateProfilePasswordUseCase {
     if (user.isGoogleUser) {
       throw new Error('Cannot update password for Google users');
     }
-    await this.userRepository.updateProfilePassword(user.id, currentPassword,newPassword);
+    await this.userRepository.updateProfilePassword(user.id, currentPassword, newPassword);
   }
 }
 
@@ -130,7 +132,7 @@ export class CreateGoogleUserUseCase {
           user: {
             id: existingUser.id,
             username: existingUser.username,
-            displayName: existingUser.displayName ?? '',
+            displayName: existingUser.displayName ?? existingUser.username,
             email: existingUser.email,
             profileImage: existingUser.profileImage,
             titleImage: existingUser.titleImage,
@@ -143,13 +145,14 @@ export class CreateGoogleUserUseCase {
     if (existingUsername) {
       return { isUsernameTaken: true };
     }
-    
+
     const randomPassword = crypto.randomBytes(16).toString('hex');
     const hashedPassword = await bcrypt.hash(randomPassword, 10);
 
     const userProps: UserProps = {
       email,
       username: userName,
+      displayName: userName,
       password: hashedPassword,
       profileImage,
       isGoogleUser: true,
@@ -157,6 +160,20 @@ export class CreateGoogleUserUseCase {
     };
     const user = new User(userProps);
     const createdUser = await this.userRepository.createUser(user);
+
+    
+    if (createdUser) {
+      try {
+        await publishUserCreationMessage({
+          userId: createdUser.id,
+          username: createdUser.username,
+          displayName: createdUser.displayName,
+          profileImage: createdUser.profileImage,
+        });
+      } catch (error) {
+        console.error("Failed to publish message to queue:", error);
+      }
+    }
 
     if (createdUser) {
       const { accessToken, refreshToken } = generateToken(createdUser.id);
@@ -179,38 +196,61 @@ export class CreateGoogleUserUseCase {
   }
 }
 
+// export class VerifyOtpUseCase {
+//   constructor(private userRepository: UserRepository) { }
 
-      export class VerifyOtpUseCase {
-        constructor(private userRepository: UserRepository) {}
+//   async execute(otp: string, email: string): Promise<User | null> {
+//     const user = await this.userRepository.verifyOtp(otp, email);
 
-        async execute(otp: string, email: string): Promise<User | null> {
-            const user = await this.userRepository.verifyOtp(otp, email);
-            
-            // if (user) {
-            //     await publishToQueue('chat-service-user-data', {
-            //         userId: user.id,
-            //         username: user.username,
-            //         displayname: user.displayName,
-            //         profileimage: user.profileImage,
-            //     });
-            //     console.log("User data published to queue:", user);
-            // }
-            if (user) {
-              try {
-                await publishToQueue('chat-service-user-data', {
-                  userId: user.id,
-                  username: user.username,
-                  displayName: user.displayName,
-                  profileImage: user.profileImage,
-                });
-                console.log("User data published to queue:", user);
-              } catch (error) {
-                console.error("Failed to publish message to queue:", error);
-              }
-            }           
-            return user;
-        }
+//     // if (user) {
+//     //     await publishToQueue('chat-service-user-data', {
+//     //         userId: user.id,
+//     //         username: user.username,
+//     //         displayname: user.displayName,
+//     //         profileimage: user.profileImage,
+//     //     });
+//     //     console.log("User data published to queue:", user);
+//     // }
+//     if (user) {
+//       try {
+//         await pRetry(async()=>{
+//           await publishToQueue('chat-service-create-user', {
+//             userId: user.id,
+//             username: user.username,
+//             displayName: user.displayName,
+//             profileImage: user.profileImage,
+//           });
+//         }, { retries: 3 })
+//         console.log("User data published to queue:", user);
+//       } catch (error) {
+//         console.error("Failed to publish message to queue:", error);
+//       }
+//     }
+//     return user;
+//   }
+// }
+export class VerifyOtpUseCase {
+  constructor(private userRepository: UserRepository) {}
+
+  async execute(otp: string, email: string): Promise<User | null> {
+    const user = await this.userRepository.verifyOtp(otp, email);
+
+    if (user) {
+      try {
+        await publishUserCreationMessage({
+          userId: user.id,
+          username: user.username,
+          displayName: user.displayName,
+          profileImage: user.profileImage,
+        });
+        console.log("User data published to queue:", user);
+      } catch (error) {
+        console.error("Failed to publish message to queue:", error);
       }
+    }
+    return user;
+  }
+}
 
 
 export class RefreshAccessTokenUseCase {
@@ -223,7 +263,7 @@ export class RefreshAccessTokenUseCase {
 
 
 export class CheckUsernameUseCase {
-  constructor(private userRepository: UserRepository) {}
+  constructor(private userRepository: UserRepository) { }
 
   async execute(username: string): Promise<boolean> {
     const existingUsername = await this.userRepository.findUserByUsername(username);

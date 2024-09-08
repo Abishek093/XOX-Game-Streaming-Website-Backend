@@ -1,6 +1,6 @@
 import { UserRepository } from '../../../domain/repositories/UserRepository';
 import { User, UserProps, AuthenticatedUser, UserDetails } from '../../../domain/entities/User';
-import UserModel from '../../../infrastructure/data/UserModel';
+import UserModel, { IUser } from '../../../infrastructure/data/UserModel';
 import { log, profile } from 'console';
 import { Follower, IFollower } from '../../../infrastructure/data/FollowerModel';
 import { CheckUsernameUseCase } from './AuthUseCase';
@@ -33,7 +33,18 @@ export class FindFriendsUseCase {
 export class FollowUserUseCase {
   constructor(private userRepository: UserRepository) {}
 
-  async execute(followerId: string, userId: string): Promise<void> {
+  async execute(followerId: string, userId: string): Promise<{ status: string, message: string }> {
+    const existingFollow = await this.userRepository.findFollowRequest(followerId, userId);
+    
+    if (existingFollow) {
+      if (existingFollow.status === 'Rejected') {
+        existingFollow.status = 'Requested';
+        await existingFollow.save();
+        return { status: 'Requested', message: 'Follow request sent' };
+      } else {
+        return { status: existingFollow.status, message: 'Follow request already exists' };
+      }
+    }
     
     const follow = new Follower({
       userId,
@@ -41,6 +52,7 @@ export class FollowUserUseCase {
       status: 'Requested' 
     });
     await follow.save();
+    return { status: 'Requested', message: 'Follow request sent' };
   }
 }
 
@@ -112,9 +124,17 @@ export class RejectFriendRequestUseCase {
   }
 }
 
-export class UnfollowUserUseCasse{
+export class UnfollowUserUseCase{
   constructor(private userRepository: UserRepository) { }
   async execute(userId: string, followerId: string): Promise<void>{
     await this.userRepository.handleUnfollow(userId, followerId)
+  }
+}
+
+export class FetchSuggestionsUseCase {
+  constructor(private userRepository: UserRepository) {}
+  
+  async execute(): Promise<IUser[]> {
+    return await this.userRepository.handleFetchSuggestions();
   }
 }

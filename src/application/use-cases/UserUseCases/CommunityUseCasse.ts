@@ -3,6 +3,7 @@ import { Community, ICommunity, ICommunityWithCounts } from "../../../infrastruc
 import { v4 as uuidv4 } from 'uuid';
 import { uploadToS3 } from "../../../utils/s3Uploader";
 import { IPost } from "../../../infrastructure/data/PostModel";
+import { IFollower } from "../../../infrastructure/data/FollowerModel";
 
 export class CreateCommunityUseCase {
     constructor (private userRepository: UserRepository){}
@@ -96,3 +97,30 @@ export class CreateCommunityPostUseCase {
       }
     }
   }
+
+
+
+export class FollowCommunityUseCase {
+  constructor(private userRepository: UserRepository) {}
+
+  async execute(userId: string, communityId: string): Promise<void> {
+    const newFollow = await this.userRepository.followCommunity(userId, communityId)
+  }
+}
+
+export class UnfollowCommunityUseCase {
+  constructor(private userRepository: UserRepository) {}
+
+  async execute(userId: string, communityId: string): Promise<void> {
+    await this.userRepository.handleUnfollow(userId, communityId);
+  }
+}
+
+export class FetchCommunityFollowersUseCase {
+  constructor(private userRepository: UserRepository) {}
+
+  async execute(communityId: string): Promise<IFollower[]> {
+    const followers = await this.userRepository.fetchFollowers(communityId);
+    return followers;
+  }
+}

@@ -27,7 +27,6 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
 export const updateProfileImage = async (req: Request, res: Response): Promise<void> => {
   try {
     const { userId, username, profileImage } = req.body;
-    // console.log("profileImage", profileImage)
     if (!profileImage) {
       throw new Error('Profile image data is missing');
     }

@@ -6,6 +6,7 @@ import { IFollower } from "../../infrastructure/data/FollowerModel";
 import { ILike } from "../../infrastructure/data/LikesModel";
 import { IPost } from "../../infrastructure/data/PostModel";
 import { IReport } from "../../infrastructure/data/ReportModel";
+import { IUser } from "../../infrastructure/data/UserModel";
 import { User } from "../entities/User";
 
 export interface UserRepository {
@@ -74,5 +75,13 @@ export interface UserRepository {
   acceptFriendRequest(requestId: string): Promise<void>;
   rejectFriendRequest(requestId: string): Promise<void>;
   handleUnfollow(userId: string, followerId: string): Promise<void>;
-  verifyOtp(otp: string, email: string): Promise<User | null> 
+  findFollowRequest(followerId: string, userId: string): Promise<IFollower | null>
+  verifyOtp(otp: string, email: string): Promise<User | null>;
+  updateComment(commentId: string, editContent: string): Promise<IComment | null>;
+  deleteComment(commentId: string):Promise<void>
+  followCommunity(userId: string, communityId: string): Promise<void>
+  fetchCommunityFollowers(communityId: string): Promise<IFollower[]>
+  handleCommunityUnfollow(userId: string, communityId: string): Promise<void>
+  handleFetchSuggestions():Promise<IUser[]>
+
 }

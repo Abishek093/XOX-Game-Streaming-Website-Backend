@@ -84,6 +84,24 @@ export class FetchCommentUseCase{
   }
 }
 
+export class UpdateCommentUseCase {
+  constructor(private userRepository: UserRepository) {}
+  
+  async execute(commentId: string, editContent: string): Promise<IComment | null> {
+    const updatedComment = await this.userRepository.updateComment(commentId, editContent); 
+    return updatedComment;
+  }
+} 
+
+export class DeleteCommentUseCase {
+  constructor(private userRepository: UserRepository) {}
+  
+  async execute(commentId: string): Promise<void> {
+    await this.userRepository.deleteComment(commentId); 
+  }
+}
+
+
 export class FetchPostUseCase{
   constructor(private userRepository: UserRepository){}
   async execute(postId: string){

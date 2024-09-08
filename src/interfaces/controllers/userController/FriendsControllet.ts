@@ -7,13 +7,14 @@ import {
   AcceptFriendRequestUseCase,
   FetchFollowersUseCase,
   FetchFollowingUseCase,
+  FetchSuggestionsUseCase,
   FindFriendsUseCase,
   FollowUserUseCase,
   GetFollowRequests,
   GetFollowStatusUseCase,
   GetUserProfile,
   RejectFriendRequestUseCase,
-  UnfollowUserUseCasse,
+  UnfollowUserUseCase,
 } from "../../../application/use-cases/UserUseCases/FriendsUseCase";
 import { handleResponse } from "../../../utils/responseHandler";
 
@@ -27,8 +28,8 @@ const getFollowStatusUseCase = new GetFollowStatusUseCase(userRepository);
 const getFollowRequests = new GetFollowRequests(userRepository);
 const acceptFriendRequestUseCase = new AcceptFriendRequestUseCase(userRepository);
 const rejectFriendRequestUseCase = new RejectFriendRequestUseCase(userRepository);
-const unfollowUserUseCasse = new UnfollowUserUseCasse(userRepository);
-
+const unfollowUserUseCase = new UnfollowUserUseCase(userRepository);
+const fetchSuggestionsUseCase = new FetchSuggestionsUseCase(userRepository)
 
 export const fetchSearchResults = async (req: Request, res: Response) => {
   const query = req.query.query as string;
@@ -49,8 +50,8 @@ export const fetchSearchResults = async (req: Request, res: Response) => {
 export const followUser = async (req: Request, res: Response) => {
   const { followerId, userId } = req.params;
   try {
-    await followUserUseCase.execute(followerId, userId);
-    return res.status(200).json({ message: "Follow successful" });
+    const result = await followUserUseCase.execute(followerId, userId);
+    return res.status(200).json(result);
   } catch (error) {
     return res.status(500).json({ error: "Internal server error" });
   }
@@ -59,13 +60,12 @@ export const followUser = async (req: Request, res: Response) => {
 export const unfollowUser = async (req: Request, res: Response) => {
   const { followerId, userId } = req.params;
   try {
-    await unfollowUserUseCasse.execute(userId, followerId);
-    return res.status(200).json({ message: "Follow successful" });
+    await unfollowUserUseCase.execute(userId, followerId);
+    return res.status(200).json({ message: "Unfollowed successfully" });
   } catch (error) {
     return res.status(500).json({ error: "Internal server error" });
   }
 };
-
 
 export const fetchUserDetails = async (req: Request, res: Response) => {
   const { username } = req.params;
@@ -139,3 +139,11 @@ export const rejectFriendRequest = async (req: Request, res: Response) => {
   }
 };
 
+export const fetchSuggestions = async (req: Request, res: Response) => {
+  try {
+    const suggestions = await fetchSuggestionsUseCase.execute();
+    handleResponse(res, 200, { results: suggestions });
+  } catch (error: any) {
+    handleResponse(res, 500, "Internal server error");
+  }
+};

@@ -1,7 +1,7 @@
 import { log } from 'console'
 import { Request, Response } from 'express'
 import { handleResponse } from '../../../utils/responseHandler'
-import { CreateCommunityPostUseCase, CreateCommunityUseCase, DeleteCommunityUseCase, FetchAllCommunitiesUseCase, FetchCommunityUseCase, UpdateCommunityUseCase } from '../../../application/use-cases/UserUseCases/CommunityUseCasse'
+import { CreateCommunityPostUseCase, CreateCommunityUseCase, DeleteCommunityUseCase, FetchAllCommunitiesUseCase, FetchCommunityFollowersUseCase, FetchCommunityUseCase, FollowCommunityUseCase, UnfollowCommunityUseCase, UpdateCommunityUseCase } from '../../../application/use-cases/UserUseCases/CommunityUseCasse'
 import { MongoUserRepository } from '../../../infrastructure/repositories/MongoUserRepository'
 import { ICommunity } from '../../../infrastructure/data/CommunityModel'
 import { Error } from 'mongoose'
@@ -13,6 +13,9 @@ const fetchCommunityUseCase = new FetchCommunityUseCase(userRepository)
 const createCommunityPostUseCase = new CreateCommunityPostUseCase(userRepository)
 const updateCommunityUseCase = new UpdateCommunityUseCase(userRepository)
 const deleteCommunityUseCase = new DeleteCommunityUseCase(userRepository)
+const followCommunityUseCase = new FollowCommunityUseCase(userRepository)
+const unfollowCommunityUseCase = new UnfollowCommunityUseCase(userRepository)
+const fetchCommunityFollowersUseCase = new FetchCommunityFollowersUseCase(userRepository)
 
 
 export const createCommunity = async (req: Request, res: Response): Promise<void> => {
@@ -98,5 +101,37 @@ export const deleteCommunity = async (req: Request, res: Response): Promise<void
     handleResponse(res, 200, { message: 'Community deleted successfully' });
   } catch (error: any) {
     handleResponse(res, 400, { message: error.message });
+  }
+};
+
+
+
+export const followCommunity = async (req: Request, res: Response) => {
+  const { communityId, userId } = req.params;
+  try {
+    await followCommunityUseCase.execute(userId, communityId);
+    return res.status(200).json({ message: "Follow successful" });
+  } catch (error) {
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const unfollowCommunity = async (req: Request, res: Response) => {
+  const { communityId, userId } = req.params;
+  try {
+    await unfollowCommunityUseCase.execute(userId, communityId);
+    return res.status(200).json({ message: "Unfollow successful" });
+  } catch (error) {
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const fetchCommunityFollowers = async (req: Request, res: Response) => {
+  try {
+    const { communityId } = req.params;
+    const followers = await fetchCommunityFollowersUseCase.execute(communityId);
+    handleResponse(res, 200, followers);
+  } catch (error: any) {
+    handleResponse(res, 400, error.message);
   }
 };
